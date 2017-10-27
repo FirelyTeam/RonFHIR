@@ -6,6 +6,21 @@ getResource <- function(private, location, summaryType){
   fromJSON(json)$resource
 }
 
+execGraphQLRead <- function(private, location, query){
+  location <- paste(location, "/$graphql?query=", query, sep="")
+  url <- paste(private$endpoint, location, sep="")
+  json <- getJSON(url)
+  json <- paste('{"resource": [', json, ']}', sep = "") # workaround
+  fromJSON(json)$resource
+}
+
+execGraphQLSystem <- function(private, query){
+  url <- paste(private$endpoint, "$graphql?query=", query, sep="")
+  json <- getJSON(url)
+  json <- paste('{"resource": [', json, ']}', sep = "") # workaround
+  fromJSON(json)$resource
+}
+
 getBundle <- function(private, resourceType, criteria, includes, pageSize, summaryType, q){
   if(is.null(resourceType)){
     endpoint <- substr(private$endpoint, 1, nchar(private$endpoint) - 1) # exclude "/" at the end of the endpoint for wholesystemsearch
@@ -23,7 +38,6 @@ getBundle <- function(private, resourceType, criteria, includes, pageSize, summa
 
   url <- paste(endpoint, "?", q$toUriParamString(), sep = "")
   json <- getJSON(url)
-  fromJSON(json)
   bundle <- fromJSON(json)
 
   if(!is.null(bundle$entry$resource) && "OperationOutcome" %in% bundle$entry$resource$resourceType){

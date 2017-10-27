@@ -97,6 +97,8 @@ fhirClient <- R6Class("fhirClient",
                           wholeSystemSearch(self, private, criteria, includes, pageSize, summaryType),
                         searchByQuery = function(params, resourceType = NULL)
                           searchByQuery(self, private, params, resourceType),
+                        qraphQL = function(query, location = NULL)
+                          graphQLPriv(self, private, query, location),
                         continue = function(bundle)
                           continue(self, private, bundle),
                         print = function()
@@ -128,6 +130,13 @@ initialize <- function(self, private, endpoint) {
 
 read <- function(self, private, location, summaryType){
   getResource(private, location, summaryType)
+}
+
+graphQLPriv <- function(self, private, query, location){
+  if (is.null(location))
+    execGraphQLSystem(private, query)
+  else
+    execGraphQLRead(private, location, query)
 }
 
 search <- function(self, private, resourceType, criteria, includes, pageSize, summaryType){
@@ -171,7 +180,3 @@ print <- function(self, private){
   )
   invisible(self)
 }
-
-
-
-
