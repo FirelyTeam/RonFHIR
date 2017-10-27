@@ -101,6 +101,8 @@ fhirClient <- R6Class("fhirClient",
                           graphQLPriv(self, private, query, location),
                         continue = function(bundle)
                           continue(self, private, bundle),
+                        operation = function (resourceType = NULL, id = NULL, name, parameters = NULL) 
+                          operation(self, private, resourceType, id, name, parameters),
                         print = function()
                           print(self, private)
                       ),
@@ -172,6 +174,17 @@ continue <- function(self, private, bundle)
     json <- getJSON(next_url)
     return(fromJSON(json))
   }
+}
+
+operation <- function(self, private, resourceType, id, name, parameters) 
+{
+  path <- "";
+  if(!is.null(resourceType)) {path <- paste(path, resourceType, "/", sep="")}
+  if(!is.null(id)) {path <- paste(path, id, "/", sep="")}
+  path <- paste(path, "$", name, sep="")
+  if(!is.null(parameters)) {path <- paste(path, "?", parameters, sep="")}
+  
+  getResource(private, path, NULL)
 }
 
 print <- function(self, private){
