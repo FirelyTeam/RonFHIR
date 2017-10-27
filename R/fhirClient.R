@@ -108,13 +108,14 @@ fhirClient <- R6Class("fhirClient",
                       )
 )
 
+
 initialize <- function(self, private, endpoint) {
   if(substr(endpoint, nchar(endpoint), nchar(endpoint)) != "/"){
     endpoint <- paste(endpoint, "/", sep="")
   }
 
   private$endpoint <- endpoint
-  json <- getJSON(paste(endpoint, "metadata", sep = ""))
+  json <- getJSON(paste(endpoint, "metadata?_summary=true", sep = ""))
   meta <- fromJSON(json)
 
   tryCatch(meta$resourceType == "CapabilityStatement", error = function(e){stop("Could not connect to endpoint", call. = FALSE)})
