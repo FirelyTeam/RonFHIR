@@ -97,8 +97,12 @@ fhirClient <- R6Class("fhirClient",
                           wholeSystemSearch(self, private, criteria, includes, pageSize, summaryType),
                         searchByQuery = function(params, resourceType = NULL)
                           searchByQuery(self, private, params, resourceType),
+                        qraphQL = function(query, location = NULL)
+                          graphQLPriv(self, private, query, location),
                         continue = function(bundle)
                           continue(self, private, bundle),
+                        operation = function (resourceType = NULL, id = NULL, name, parameters = NULL) 
+                          operation(self, private, resourceType, id, name, parameters),
                         print = function()
                           print(self, private)
                       ),
@@ -108,13 +112,14 @@ fhirClient <- R6Class("fhirClient",
                       )
 )
 
+
 initialize <- function(self, private, endpoint) {
   if(substr(endpoint, nchar(endpoint), nchar(endpoint)) != "/"){
     endpoint <- paste(endpoint, "/", sep="")
   }
 
   private$endpoint <- endpoint
-  json <- getJSON(paste(endpoint, "metadata", sep = ""))
+  json <- getJSON(paste(endpoint, "metadata?_summary=true", sep = ""))
   meta <- fromJSON(json)
 
   tryCatch(meta$resourceType == "CapabilityStatement", error = function(e){stop("Could not connect to endpoint", call. = FALSE)})
@@ -127,6 +132,13 @@ initialize <- function(self, private, endpoint) {
 
 read <- function(self, private, location, summaryType){
   getResource(private, location, summaryType)
+}
+
+graphQLPriv <- function(self, private, query, location){
+  if (is.null(location))
+    execGraphQLSystem(private, query)
+  else
+    execGraphQLRead(private, location, query)
 }
 
 search <- function(self, private, resourceType, criteria, includes, pageSize, summaryType){
@@ -164,13 +176,20 @@ continue <- function(self, private, bundle)
   }
 }
 
+operation <- function(self, private, resourceType, id, name, parameters) 
+{
+  path <- "";
+  if(!is.null(resourceType)) {path <- paste(path, resourceType, "/", sep="")}
+  if(!is.null(id)) {path <- paste(path, id, "/", sep="")}
+  path <- paste(path, "$", name, sep="")
+  if(!is.null(parameters)) {path <- paste(path, "?", parameters, sep="")}
+  
+  getResource(private, path, NULL)
+}
+
 print <- function(self, private){
   cat(
     "Endpoint:", private$endpoint
   )
   invisible(self)
 }
-
-
-
-
