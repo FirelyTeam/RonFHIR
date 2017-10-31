@@ -60,3 +60,23 @@ getJSON <- function(url){
   }
   content
 }
+
+# JSON only for now
+putResource <- function(self, private, resource){
+  if(!validate(resource)){
+    stop("Resource is not in JSON format.", call. = FALSE)
+  }
+  parsed <- fromJSON(resource)
+  resourceType <- try(parsed$resourceType)
+  id <- try(parsed$id)
+  if(is.null(resourceType) || is.null(id)){
+    stop("The resourceType and/or id is not set properly.", call. = FALSE)
+  }
+  
+  path <- paste(private$endpoint, resourceType, '/', id, sep = "")
+  response <- PUT(path, body = resource, content_type_json())
+  
+  if(http_error(response)){
+    stop(http_status(response)$message, call. = FALSE)
+  }
+}
