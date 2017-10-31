@@ -1,0 +1,56 @@
+{
+    "resourceType": "Patient",
+    "id": "exampleR",
+    "active": true,
+    "name": [
+        {
+            "use": "official",
+            "family": "FHIR",
+            "given": [
+                "Ron",
+                "Loves"
+            ]
+        },
+        {
+            "use": "usual",
+            "family": "FHIR",
+            "given": [
+                "Ron"
+            ]
+        }
+    ],
+    "telecom": [
+        {
+            "use": "home"
+        },
+        {
+            "system": "phone",
+            "value": "(03) 5555 6472",
+            "use": "work",
+            "rank": 1
+        }
+    ],
+    "gender": "male",
+    "birthDate": "1994-04-26",
+    "deceasedBoolean": false,
+    "address": [
+        {
+            "use": "home",
+            "type": "both",
+            "text": "Bos en Lommerplein, Amsterdam, Nederland",
+            "line": [
+                "Bos en Lommerplein, Amsterdam"
+            ],
+            "city": "Amsterdam",
+            "district": "Bos en Lommer",
+            "state": "Noord-Holland",
+            "postalCode": "1055",
+            "period": {
+                "start": "1993-01-01"
+            }
+        }
+    ],
+    "managingOrganization": {
+        "display": "Furore"
+    }
+}
