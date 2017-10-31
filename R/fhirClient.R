@@ -103,6 +103,8 @@ fhirClient <- R6Class("fhirClient",
                           continue(self, private, bundle),
                         operation = function (resourceType = NULL, id = NULL, name, parameters = NULL) 
                           operation(self, private, resourceType, id, name, parameters),
+                        update = function(resource)
+                          update(self, private, resource),
                         print = function()
                           print(self, private)
                       ),
@@ -185,6 +187,10 @@ operation <- function(self, private, resourceType, id, name, parameters)
   if(!is.null(parameters)) {path <- paste(path, "?", parameters, sep="")}
   
   getResource(private, path, NULL)
+}
+
+update <- function(self, private, resource){
+  putResource(self, private, resource)
 }
 
 print <- function(self, private){
