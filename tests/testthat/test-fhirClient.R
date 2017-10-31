@@ -1,4 +1,5 @@
 context("fhirClient")
+library(httr)
 
 client <- fhirClient$new("http://vonk.furore.com")
 
@@ -33,22 +34,26 @@ test_that("Paging",{
 })
 
 test_that("Read",{
-  loc <- client$read("Location/1")
-  expect_true(!is.null(loc))
-  expect_equal(loc$address$city, "Den Burg")
-  expect_equal(loc$id, "1")
-  expect_true(!is.null(loc$meta$versionId))
+  DELETE("https://vonk.furore.com/Patient/exampleR")
+  expect_error(client$read("Patient/exampleR"))
+  client$update(readLines("../testfiles/example_patient.json"))
+  pat <- client$read("Patient/exampleR")
+  expect_true(!is.null(pat))
+  expect_equal(pat$id, "exampleR")
+  expect_equal(pat$birthDate, "1994-04-26")
 })
 
 test_that("Search",{
-  peters <- client$search("Patient", c("name=Chalmers", "name=Peter"))
-  expect_true(nrow(peters$entry) > 0)
-  expect_true(all(peters$entry$resource$resourceType == "Patient"))
+  ron <- client$search("Patient", c("given:exact=Ron", "family:exact=FHIR"))
+  expect_true(nrow(ron$entry) > 0)
+  expect_true(all(ron$entry$resource$resourceType == "Patient"))
 })
 
 test_that("SearchById", {
-  example <- client$searchById("Patient", "example")
-  expect_equal(nrow(example$entry), 1)
-  expect_equal(example$entry$resource$resourceType, "Patient")
-  expect_equal(example$entry$resource$id, "example")
+  pat <- client$searchById("Patient", "exampleR")
+  expect_equal(nrow(pat$entry), 1)
+  expect_equal(pat$entry$resource$resourceType, "Patient")
+  expect_equal(pat$entry$resource$id, "exampleR")
+  expect_equal(pat$entry$resource$birthDate, "1994-04-26")
+  DELETE("https://vonk.furore.com/Patient/exampleR")
 })
