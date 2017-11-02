@@ -84,29 +84,29 @@ fhirClient <- R6Class("fhirClient",
                       public = list(
                         # Initializing the fhirClient
                         initialize = function(endpoint)
-                          initialize(self, private, endpoint),
+                          execInitialize(self, private, endpoint),
 
                         # Methods
                         read = function(location, summaryType = NULL)
-                          read(self, private, location, summaryType),
+                          execRead(self, private, location, summaryType),
                         search = function(resourceType, criteria = NULL, includes = NULL, pageSize = NULL, summaryType = NULL)
-                          search(self, private, resourceType, criteria, includes, pageSize, summaryType),
+                          execSearch(self, private, resourceType, criteria, includes, pageSize, summaryType),
                         searchById = function(resourceType, id, includes = NULL, summaryType = NULL)
-                          searchById(self, private, resourceType, id, includes, summaryType),
+                          execSearchById(self, private, resourceType, id, includes, summaryType),
                         wholeSystemSearch = function(criteria = NULL, includes = NULL, pageSize = NULL, summaryType = NULL)
-                          wholeSystemSearch(self, private, criteria, includes, pageSize, summaryType),
+                          execWholeSystemSearch(self, private, criteria, includes, pageSize, summaryType),
                         searchByQuery = function(params, resourceType = NULL)
-                          searchByQuery(self, private, params, resourceType),
+                          execSearchByQuery(self, private, params, resourceType),
                         qraphQL = function(query, location = NULL)
-                          graphQLPriv(self, private, query, location),
+                          execGraphQL(self, private, query, location),
                         continue = function(bundle)
-                          continue(self, private, bundle),
+                          execContinue(self, private, bundle),
                         operation = function (resourceType = NULL, id = NULL, name, parameters = NULL) 
-                          operation(self, private, resourceType, id, name, parameters),
+                          execOperation(self, private, resourceType, id, name, parameters),
                         update = function(resource)
-                          update(self, private, resource),
+                          execUpdate(self, private, resource),
                         print = function()
-                          print(self, private)
+                          execPrint(self, private)
                       ),
                       private = list(
                         # Private variables
@@ -115,7 +115,7 @@ fhirClient <- R6Class("fhirClient",
 )
 
 
-initialize <- function(self, private, endpoint) {
+execInitialize <- function(self, private, endpoint) {
   if(substr(endpoint, nchar(endpoint), nchar(endpoint)) != "/"){
     endpoint <- paste(endpoint, "/", sep="")
   }
@@ -132,38 +132,41 @@ initialize <- function(self, private, endpoint) {
   }
 }
 
-read <- function(self, private, location, summaryType){
-  getResource(private, location, summaryType)
+execRead <- function(self, private, location, summaryType){
+  url <- toReadURL(private, location, summaryType)
+  getResource(url)
 }
 
-graphQLPriv <- function(self, private, query, location){
-  if (is.null(location))
-    execGraphQLSystem(private, query)
-  else
-    execGraphQLRead(private, location, query)
+execGraphQL <- function(self, private, query, location){
+  url <- toGraphQLURL(private, location, query)
+  getResource(url)
 }
 
-search <- function(self, private, resourceType, criteria, includes, pageSize, summaryType){
-  getBundle(private, resourceType, criteria, includes, pageSize, summaryType, NULL)
+execSearch <- function(self, private, resourceType, criteria, includes, pageSize, summaryType){
+  url <- toSearchURL(private, resourceType, criteria, includes, pageSize, summaryType, NULL)
+  getBundle(url)
 }
 
-searchById <- function(self, private, resourceType, id, includes, summaryType){
+execSearchById <- function(self, private, resourceType, id, includes, summaryType){
   criteria <- paste("_id=", id, sep = "")
-  getBundle(private, resourceType, criteria, includes, NULL, summaryType, NULL)
+  url <- toSearchURL(private, resourceType, criteria, includes, NULL, summaryType, NULL)
+  getBundle(url)
 }
 
-wholeSystemSearch <- function(self, private, criteria, includes, pageSize, summaryType){
-  getBundle(private, NULL, criteria, includes, pageSize, summaryType, NULL)
+execWholeSystemSearch <- function(self, private, criteria, includes, pageSize, summaryType){
+  url <- toSearchURL(private, NULL, criteria, includes, pageSize, summaryType, NULL)
+  getBundle(url)
 }
 
-searchByQuery <- function(self, private, query, resourceType){
+execSearchByQuery <- function(self, private, query, resourceType){
   if(!("searchParams" %in% class(query))){
     stop("Parameter is not a valid searchParams object", call. = FALSE)
   }
-  getBundle(private, resourceType, NULL, NULL, NULL, NULL, query)
+  url <- toSearchURL(private, resourceType, NULL, NULL, NULL, NULL, query)
+  getBundle(url)
 }
 
-continue <- function(self, private, bundle)
+execContinue <- function(self, private, bundle)
 {
   tryCatch(bundle$resourceType == "Bundle", error = function(e){stop("Input is not recognized as a Bundle", call. = FALSE)})
   next_url <- bundle$link[bundle$link$relation == "next",]$url
@@ -178,22 +181,17 @@ continue <- function(self, private, bundle)
   }
 }
 
-operation <- function(self, private, resourceType, id, name, parameters) 
+execOperation <- function(self, private, resourceType, id, name, parameters) 
 {
-  path <- "";
-  if(!is.null(resourceType)) {path <- paste(path, resourceType, "/", sep="")}
-  if(!is.null(id)) {path <- paste(path, id, "/", sep="")}
-  path <- paste(path, "$", name, sep="")
-  if(!is.null(parameters)) {path <- paste(path, "?", parameters, sep="")}
-  
-  getResource(private, path, NULL)
+  url <- toOperationURL(private, resourceType, id, name, parameters)
+  getBundle(url)
 }
 
-update <- function(self, private, resource){
+execUpdate <- function(self, private, resource){
   putResource(self, private, resource)
 }
 
-print <- function(self, private){
+execPrint <- function(self, private){
   cat(
     "Endpoint:", private$endpoint
   )

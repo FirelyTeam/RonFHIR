@@ -1,27 +1,39 @@
-getResource <- function(private, location, summaryType){
-  if(!is.null(summaryType)){summaryType <- paste("?_summary=", summaryType, sep="")}
-  url <- paste(private$endpoint, location, summaryType, sep="")
+getResource <- function(url){
   json <- getJSON(url)
   json <- paste('{"resource": [', json, ']}', sep = "") # workaround
   fromJSON(json)$resource
 }
 
-execGraphQLRead <- function(private, location, query){
-  location <- paste(location, "/$graphql?query=", query, sep="")
-  url <- paste(private$endpoint, location, sep="")
+getBundle <- function(url){
   json <- getJSON(url)
-  json <- paste('{"resource": [', json, ']}', sep = "") # workaround
-  fromJSON(json)$resource
+  bundle <- fromJSON(json)
+  
+  if(!is.null(bundle$entry$resource) && "OperationOutcome" %in% bundle$entry$resource$resourceType){
+    issue <- bundle$entry$resource[which(bundle$entry$resource$resourceType == "OperationOutcome"),]$issue
+    issue <- unlist(issue)
+    warning(paste(names(issue), issue, sep = ": ", collapse = "\n"), call. = FALSE)
+  }
+  bundle
 }
 
-execGraphQLSystem <- function(private, query){
-  url <- paste(private$endpoint, "$graphql?query=", query, sep="")
-  json <- getJSON(url)
-  json <- paste('{"resource": [', json, ']}', sep = "") # workaround
-  fromJSON(json)$resource
+toGraphQLURL <- function(private, location, query){
+  if(!is.null(location)){
+    location <- paste(location, "/", sep = "")
+  }
+  paste(private$endpoint, location, "$graphql?query=", query, sep="")
 }
 
-getBundle <- function(private, resourceType, criteria, includes, pageSize, summaryType, q){
+toOperationURL <- function(private, resourceType, id, name, parameters)
+{
+  path <- ""
+  if(!is.null(resourceType)) {path <- paste(path, resourceType, "/", sep="")}
+  if(!is.null(id)) {path <- paste(path, id, "/", sep="")}
+  path <- paste(path, "$", name, sep="")
+  if(!is.null(parameters)) {path <- paste(path, "?", parameters, sep="")}
+  paste(private$endpoint, path, sep="")
+}
+
+toSearchURL <- function(private, resourceType, criteria, includes, pageSize, summaryType, q){
   if(is.null(resourceType)){
     endpoint <- substr(private$endpoint, 1, nchar(private$endpoint) - 1) # exclude "/" at the end of the endpoint for wholesystemsearch
   }
@@ -35,18 +47,12 @@ getBundle <- function(private, resourceType, criteria, includes, pageSize, summa
     if(!is.null(includes)){q$include(includes)}
     if(!is.null(summaryType)){q$where(paste("_summary=", summaryType, sep =""))}
   }
+  paste(endpoint, "?", q$toUriParamString(), sep = "")
+}
 
-  url <- paste(endpoint, "?", q$toUriParamString(), sep = "")
-  json <- getJSON(url)
-  bundle <- fromJSON(json)
-
-  if(!is.null(bundle$entry$resource) && "OperationOutcome" %in% bundle$entry$resource$resourceType){
-      issue <- bundle$entry$resource[which(bundle$entry$resource$resourceType == "OperationOutcome"),]$issue
-      issue <- unlist(issue)
-      warning(paste(names(issue), issue, sep = ": ", collapse = "\n"), call. = FALSE)
-  }
-
-  bundle
+toReadURL <- function(private, location, summaryType){
+  if(!is.null(summaryType)){summaryType <- paste("?_summary=", summaryType, sep="")}
+  paste(private$endpoint, location, summaryType, sep="")
 }
 
 getJSON <- function(url){
