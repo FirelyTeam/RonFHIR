@@ -1,11 +1,11 @@
-getResource <- function(url){
-  json <- getJSON(url)
+getResource <- function(self, url){
+  json <- getJSON(self, url)
   json <- paste('{"resource": [', json, ']}', sep = "") # workaround
   fromJSON(json)$resource
 }
 
-getBundle <- function(url){
-  json <- getJSON(url)
+getBundle <- function(self, url){
+  json <- getJSON(self, url)
   bundle <- fromJSON(json)
   
   if(!is.null(bundle$entry$resource) && "OperationOutcome" %in% bundle$entry$resource$resourceType){
@@ -16,29 +16,29 @@ getBundle <- function(url){
   bundle
 }
 
-toGraphQLURL <- function(private, location, query){
+toGraphQLURL <- function(self, location, query){
   if(!is.null(location)){
     location <- paste(location, "/", sep = "")
   }
-  paste(private$endpoint, location, "$graphql?query=", query, sep="")
+  paste(self$endpoint, location, "$graphql?query=", query, sep="")
 }
 
-toOperationURL <- function(private, resourceType, id, name, parameters)
+toOperationURL <- function(self, resourceType, id, name, parameters)
 {
   path <- ""
   if(!is.null(resourceType)) {path <- paste(path, resourceType, "/", sep="")}
   if(!is.null(id)) {path <- paste(path, id, "/", sep="")}
   path <- paste(path, "$", name, sep="")
   if(!is.null(parameters)) {path <- paste(path, "?", parameters, sep="")}
-  paste(private$endpoint, path, sep="")
+  paste(self$endpoint, path, sep="")
 }
 
-toSearchURL <- function(private, resourceType, criteria, includes, pageSize, summaryType, q){
+toSearchURL <- function(self, resourceType, criteria, includes, pageSize, summaryType, q){
   if(is.null(resourceType)){
-    endpoint <- substr(private$endpoint, 1, nchar(private$endpoint) - 1) # exclude "/" at the end of the endpoint for wholesystemsearch
+    endpoint <- substr(self$endpoint, 1, nchar(self$endpoint) - 1) # exclude "/" at the end of the endpoint for wholesystemsearch
   }
   else{
-    endpoint <- paste(private$endpoint, resourceType, sep = "")
+    endpoint <- paste(self$endpoint, resourceType, sep = "")
   }
   if(is.null(q)){
     q <- searchParams$new()
@@ -50,13 +50,17 @@ toSearchURL <- function(private, resourceType, criteria, includes, pageSize, sum
   paste(endpoint, "?", q$toUriParamString(), sep = "")
 }
 
-toReadURL <- function(private, location, summaryType){
+toReadURL <- function(self, location, summaryType){
   if(!is.null(summaryType)){summaryType <- paste("?_summary=", summaryType, sep="")}
-  paste(private$endpoint, location, summaryType, sep="")
+  paste(self$endpoint, location, summaryType, sep="")
 }
 
-getJSON <- function(url){
-  response <- tryCatch(GET(URLencode(url), accept_json()), error = function(e){stop("Could not connect to endpoint")})
+getJSON <- function(self, url){
+  response <- tryCatch(GET(URLencode(url), 
+                           accept_json(), 
+                           config(token = self$token)), 
+                       error = function(e){stop("Could not connect to endpoint")})
+  
   content <- content(response, as = "text", encoding = "UTF-8")
   if(http_error(response)){
     stop(http_status(response)$message, call. = FALSE)
@@ -68,7 +72,7 @@ getJSON <- function(url){
 }
 
 # JSON only for now
-putResource <- function(self, private, resource){
+putResource <- function(self, resource){
   if(!validate(resource)){
     stop("Resource is not in JSON format.", call. = FALSE)
   }
@@ -79,7 +83,7 @@ putResource <- function(self, private, resource){
     stop("The resourceType and/or id is not set properly.", call. = FALSE)
   }
   
-  path <- paste(private$endpoint, resourceType, '/', id, sep = "")
+  path <- paste(self$endpoint, resourceType, '/', id, sep = "")
   response <- PUT(path, body = resource, content_type_json())
   
   if(http_error(response)){
