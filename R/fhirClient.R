@@ -74,10 +74,12 @@
 #'
 #' @importFrom R6 R6Class
 #' @importFrom httr GET
+#' @importFrom httr PUT
 #' @importFrom httr content
 #' @importFrom httr http_error
 #' @importFrom httr http_status
 #' @importFrom httr config
+#' @importFrom httr content_type_json
 #' @importFrom httr accept_json
 #' @importFrom jsonlite fromJSON
 #' @importFrom jsonlite validate
