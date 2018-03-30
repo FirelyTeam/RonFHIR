@@ -104,17 +104,16 @@
 #' client <- fhirClient$new("https://vonk.fire.ly")
 #' 
 #' # Retrieving a token
-#' library(httr)
 #'
 #' client_id <- "id"
 #' client_secret <- "secret"
 #' app_name <- "TestApp"
 #' scopes <- c("patient/*.read")
 #' 
-#' app <- oauth_app(appname = app_name, client_id, client_secret)
-#' oauth_endpoint <- oauth_endpoint(authorize = client$authUrl, access = client$tokenUrl)
+#' app <- httr::oauth_app(appname = app_name, client_id, client_secret)
+#' oauth_endpoint <- httr::oauth_endpoint(authorize = client$authUrl, access = client$tokenUrl)
 #' 
-#' token <- oauth2.0_token(endpoint = oauth_endpoint, app = app, scope = scopes)
+#' token <- httr::oauth2.0_token(endpoint = oauth_endpoint, app = app, scope = scopes)
 #' 
 #' # Set a token and read a patient resource
 #' client$setToken(token)
