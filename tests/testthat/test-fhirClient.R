@@ -1,13 +1,11 @@
 context("fhirClient")
 library(httr)
 
-client <- fhirClient$new("http://vonk.furore.com")
+client <- fhirClient$new("https://vonk.fire.ly")
 
 test_that("fhirClient checks only connects to FHIR Servers STU 3",{
   # STU 3
-  expect_silent(fhirClient$new("http://vonk.furore.com"))
-  expect_silent(fhirClient$new("http://test.fhir.org/r3"))
-  expect_silent(fhirClient$new("http://fhirtest.uhn.ca/baseDstu3"))
+  expect_silent(fhirClient$new("https://vonk.fire.ly"))
 
   # STU 2
   expect_error(fhirClient$new("http://spark.furore.com"))
@@ -17,7 +15,7 @@ test_that("fhirClient checks only connects to FHIR Servers STU 3",{
   expect_error(fhirClient$new("http://fhirtest.uhn.ca/baseDstu1"))
 
   # Random
-  expect_error(fhirClient$new("http://furore.com"))
+  expect_error(fhirClient$new("http://fire.ly"))
   expect_error(fhirClient$new("abcdefg"))
 })
 
@@ -34,7 +32,7 @@ test_that("Paging",{
 })
 
 test_that("Read",{
-  DELETE("https://vonk.furore.com/Patient/exampleR")
+  DELETE("https://vonk.fire.ly/Patient/exampleR")
   expect_error(client$read("Patient/exampleR"))
   client$update(readLines("../testfiles/example_patient.json"))
   pat <- client$read("Patient/exampleR")
@@ -55,5 +53,5 @@ test_that("SearchById", {
   expect_equal(pat$entry$resource$resourceType, "Patient")
   expect_equal(pat$entry$resource$id, "exampleR")
   expect_equal(pat$entry$resource$birthDate, "1994-04-26")
-  DELETE("https://vonk.furore.com/Patient/exampleR")
+  DELETE("https://vonk.fire.ly/Patient/exampleR")
 })
