@@ -35,7 +35,7 @@ app_name <- "TestApp"
 scopes <- c("patient/*.read")
 
 app <- httr::oauth_app(appname = app_name, client_id, client_secret)
-oauth_endpoint <- httr::oauth_endpoint(authorize = client$authUrl, access = client$tokenUrl)
+oauth_endpoint <- httr::oauth_endpoint(authorize = paste(client$authUrl, "?aud=", client$endpoint, sep=""), access = client$tokenUrl)
 
 token <- httr::oauth2.0_token(endpoint = oauth_endpoint, app = app, scope = scopes)
 
