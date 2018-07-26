@@ -77,11 +77,9 @@ privatekey <- openssl::read_key("PrivateKey.pem")
 claim <- jose::jwt_claim(iss = "ServiceURL",
                          sub = "ClientID",
                          aud = "TokenURL",
-                         
-			                    # expiration date as epoch (5 minutes)
+			 # expiration date as epoch (5 minutes)
                          exp = as.integer(as.POSIXct( Sys.time() + 300)), 
-                         
-   			                # 'random' number
+   			 # 'random' number
                          jti = charToRaw(as.character(runif(1, 0.5, 100000000000)))) 
 
 # Sign your claim with your private key
