@@ -7,11 +7,11 @@
 #' \preformatted{
 #' client <- fhirClient$new(endpoint, token = NULL)
 #'
-#' client$read(location, summaryType = NULL)
-#' client$search(resourceType, criteria = NULL, includes = NULL, pageSize = NULL, summaryType = NULL)
-#' client$searchById(resourceType, id, includes = NULL, summaryType = NULL)
-#' client$wholeSystemSearch(criteria = NULL, includes = NULL, pageSize = NULL, summaryType = NULL)
-#' client$searchParams(params, resourceType = NULL)
+#' client$read(location, summaryType = NULL, returnType = "parsed")
+#' client$search(resourceType, criteria = NULL, includes = NULL, pageSize = NULL, summaryType = NULL, returnType = "parsed")
+#' client$searchById(resourceType, id, includes = NULL, summaryType = NULL, returnType = "parsed")
+#' client$wholeSystemSearch(criteria = NULL, includes = NULL, pageSize = NULL, summaryType = NULL, returnType = "parsed")
+#' client$searchParams(params, resourceType = NULL, returnType = "parsed")
 #' client$continue(bundle)
 #' 
 #' 
@@ -40,6 +40,7 @@
 #'   \item{pageSize}{Asks server to limit the number of entries per page returned.}
 #'   \item{query}{A searchParams object containing the search parameters.}
 #'   \item{bundle}{The bundle as received from the last response.}
+#'   \item{returnType}{Specify the return type. This can be "parsed", "json" or "xml".}
 #' }
 #'
 #' @section Details:
@@ -75,15 +76,21 @@
 #' @importFrom R6 R6Class
 #' @importFrom httr GET
 #' @importFrom httr PUT
+#' @importFrom httr POST
+#' @importFrom httr DELETE
 #' @importFrom httr content
 #' @importFrom httr http_error
 #' @importFrom httr http_status
 #' @importFrom httr config
 #' @importFrom httr content_type_json
 #' @importFrom httr accept_json
+#' @importFrom httr add_headers
+#' @importFrom httr headers
+#' @importFrom httr status_code
 #' @importFrom jsonlite fromJSON
 #' @importFrom jsonlite validate
 #' @importFrom utils URLencode
+#' @importFrom stringr str_match
 #' @name fhirClient
 #'
 #' @examples
@@ -113,19 +120,21 @@
 #' scopes <- c("patient/*.read")
 #' 
 #' app <- httr::oauth_app(appname = app_name, client_id, client_secret)
-#' oauth_endpoint <- httr::oauth_endpoint(authorize = paste(client$authUrl, "?aud=", client$endpoint, sep=""), access = client$tokenUrl)
-#' 
+#' oauth_endpoint <- httr::oauth_endpoint(
+#'                   authorize = paste(client$authUrl, "?aud=", client$endpoint, sep=""),
+#'                   access = client$tokenUrl)
+#'   
 #' token <- httr::oauth2.0_token(endpoint = oauth_endpoint, app = app, scope = scopes)
 #' 
 #' # Set a token and read a patient resource
-#' client$setToken(token)
+#' client$setToken(token$credentials$access_token)
 #' 
 #' client$read("Patient/example")
 #' 
 #' # Token refresh
 #' token <- token$refresh()
 #' 
-#' client$setToken(token)
+#' client$setToken(token$credentials$access_token)
 #' 
 #' }
 #'
@@ -139,22 +148,23 @@ fhirClient <- R6Class("fhirClient",
                           execInitialize(self, endpoint, token),
 
                         # Methods
-                        read = function(location, summaryType = NULL)
-                          execRead(self, location, summaryType),
-                        search = function(resourceType, criteria = NULL, includes = NULL, pageSize = NULL, summaryType = NULL)
-                          execSearch(self, resourceType, criteria, includes, pageSize, summaryType),
-                        searchById = function(resourceType, id, includes = NULL, summaryType = NULL)
-                          execSearchById(self, resourceType, id, includes, summaryType),
-                        wholeSystemSearch = function(criteria = NULL, includes = NULL, pageSize = NULL, summaryType = NULL)
-                          execWholeSystemSearch(self, criteria, includes, pageSize, summaryType),
-                        searchByQuery = function(params, resourceType = NULL)
-                          execSearchByQuery(self, params, resourceType),
-                        qraphQL = function(query, location = NULL)
-                          execGraphQL(self, query, location),
+                        read = function(location, summaryType = NULL, returnType = "parsed")
+                          execRead(self, location, summaryType, returnType),
+                        search = function(resourceType, criteria = NULL, includes = NULL, pageSize = NULL, summaryType = NULL, returnType = "parsed")
+                          execSearch(self, resourceType, criteria, includes, pageSize, summaryType, returnType),
+                        searchById = function(resourceType, id, includes = NULL, summaryType = NULL, returnType = "parsed")
+                          execSearchById(self, resourceType, id, includes, summaryType, returnType),
+                        wholeSystemSearch = function(criteria = NULL, includes = NULL, pageSize = NULL, summaryType = NULL, returnType = "parsed")
+                          execWholeSystemSearch(self, criteria, includes, pageSize, summaryType, returnType),
+                        searchByQuery = function(params, resourceType = NULL, returnType = "parsed")
+                          execSearchByQuery(self, params, resourceType, returnType),
+                        qraphQL = function(query, location = NULL, returnType = "parsed")
+                          execGraphQL(self, query, location, returnType),
                         continue = function(bundle)
                           execContinue(self, bundle),
-                        operation = function (resourceType = NULL, id = NULL, name, parameters = NULL) 
-                          execOperation(self, resourceType, id, name, parameters),
+                        operation = function (resourceType = NULL, id = NULL, name, parameters = NULL, returnType = "parsed") 
+                          execOperation(self, resourceType, id, name, parameters, returnType),
+                        
                         update = function(resource)
                           execUpdate(self, resource),
                         print = function()
@@ -180,18 +190,20 @@ execInitialize <- function(self, endpoint, token) {
   }
 
   self$endpoint <- endpoint
-  json <- getJSON(self, paste(self$endpoint, "metadata?_summary=true", sep = ""))
-  meta <- fromJSON(json)
+  
+  url <- paste(self$endpoint, "metadata?_summary=true", sep = "")
+  
+  payload <- getResource(self, url, "parsed")
+  
+  tryCatch(payload$resourceType == "CapabilityStatement", error = function(e){stop("Could not connect to endpoint", call. = FALSE)})
 
-  tryCatch(meta$resourceType == "CapabilityStatement", error = function(e){stop("Could not connect to endpoint", call. = FALSE)})
-
-  fhirVersion <- substr(meta$fhirVersion, 1, 1)
+  fhirVersion <- substr(payload$fhirVersion, 1, 1)
   if(fhirVersion != "3"){
     stop(paste("R on FHIR is not compatible with", fhirVersion, "only with STU 3"), call. = FALSE)
   }
   
-  if("security" %in% names(meta$rest)){
-    lapply(meta$rest$security$extension[[1]]$extension, 
+  if("security" %in% names(payload$rest)){
+    lapply(payload$rest$security$extension[[1]]$extension, 
            function(x){
              self$authUrl <<- x$valueUri[match("authorize", x$url)]
              self$tokenUrl <<- x$valueUri[match("token", x$url)]
@@ -207,59 +219,80 @@ execInitialize <- function(self, endpoint, token) {
   }
 }
 
-execRead <- function(self, location, summaryType){
+execRead <- function(self, location, summaryType, returnType){
   url <- toReadURL(self, location, summaryType)
-  getResource(self, url)
+  getResource(self, url, returnType)
 }
 
-execGraphQL <- function(self, query, location){
+execGraphQL <- function(self, query, location, returnType){
   url <- toGraphQLURL(self, location, query)
-  getResource(self, url)
+  getResource(self, url, returnType)
 }
 
-execSearch <- function(self, resourceType, criteria, includes, pageSize, summaryType){
+execSearch <- function(self, resourceType, criteria, includes, pageSize, summaryType, returnType){
   url <- toSearchURL(self, resourceType, criteria, includes, pageSize, summaryType, NULL)
-  getBundle(self, url)
+  getResource(self, url, returnType)
 }
 
-execSearchById <- function(self, resourceType, id, includes, summaryType){
-  criteria <- paste("_id=", id, sep = "")
-  url <- toSearchURL(self, resourceType, criteria, includes, NULL, summaryType, NULL)
-  getBundle(self, url)
+execSearchById <- function(self, resourceType, id, includes, summaryType, returnType){
+  url <- toSearchURL(self, resourceType, paste("_id=", id, sep = ""), includes, NULL, summaryType, NULL)
+  getResource(self, url, returnType)
 }
 
-execWholeSystemSearch <- function(self, criteria, includes, pageSize, summaryType){
+execWholeSystemSearch <- function(self, criteria, includes, pageSize, summaryType, returnType){
   url <- toSearchURL(self, NULL, criteria, includes, pageSize, summaryType, NULL)
-  getBundle(self, url)
+  getResource(self, url, returnType)
 }
 
-execSearchByQuery <- function(self, query, resourceType){
+execSearchByQuery <- function(self, query, resourceType, returnType){
   if(!("searchParams" %in% class(query))){
     stop("Parameter is not a valid searchParams object", call. = FALSE)
   }
   url <- toSearchURL(self, resourceType, NULL, NULL, NULL, NULL, query)
-  getBundle(self, url)
+  getResource(self, url, returnType)
+}
+
+execOperation <- function(self, resourceType, id, name, parameters, returnType) 
+{
+  url <- toOperationURL(self, resourceType, id, name, parameters)
+  getResource(self, url, returnType)
 }
 
 execContinue <- function(self, bundle)
 {
-  tryCatch(bundle$resourceType == "Bundle", error = function(e){stop("Input is not recognized as a Bundle", call. = FALSE)})
-  next_url <- bundle$link[bundle$link$relation == "next",]$url
+  returnType = "parsed"
+  if(is.character(bundle)){
+    # temporary and naive solution untill further investigation of validating XML and JSON against Bundle schema
+    bundle <- gsub("\\s", "", bundle)
+    
+    
+    next_url <- str_match(bundle, "<link><relationvalue=\"next\"/><urlvalue=\"(.*?)\"")[1,2]
+    if(is.na(next_url)){
+      next_url = str_match(bundle, "\"relation\":\"next\",\"url\":\"(.*?)\"")[1,2]
+      if(is.na(next_url)){
+        stop("Input is not recognized as a Bundle", call. = FALSE)
+      }
+      else{
+        returnType = "json"
+      }
+    }
+    else{
+      returnType = "xml"
+    }
+  }
+  else{
+    tryCatch(bundle$resourceType == "Bundle", error = function(e){stop("Input is not recognized as a Bundle", call. = FALSE)})
+    next_url <- bundle$link[bundle$link$relation == "next",]$url
+  }
+  
   if(length(next_url) == 0)
   {
     return(NULL)
   }
   else
   {
-    json <- getJSON(self, next_url)
-    return(fromJSON(json))
+    getResource(self, next_url, returnType)
   }
-}
-
-execOperation <- function(self, resourceType, id, name, parameters) 
-{
-  url <- toOperationURL(self, resourceType, id, name, parameters)
-  getBundle(self, url)
 }
 
 execUpdate <- function(self, resource){
@@ -274,8 +307,5 @@ execPrint <- function(self){
 }
 
 execSetToken <- function(self, token){
-  if(!("Token" %in% class(token))){
-    stop("token is not a valid Token object", call. = FALSE)
-  }
-  self$token <- token
+  self$token <- paste("Bearer", token)
 }

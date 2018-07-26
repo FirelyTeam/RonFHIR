@@ -12,11 +12,11 @@ Based on \href{https://github.com/ewoutkramer/fhir-net-api}{the official HL7 FHI
 \preformatted{
 client <- fhirClient$new(endpoint, token = NULL)
 
-client$read(location, summaryType = NULL)
-client$search(resourceType, criteria = NULL, includes = NULL, pageSize = NULL, summaryType = NULL)
-client$searchById(resourceType, id, includes = NULL, summaryType = NULL)
-client$wholeSystemSearch(criteria = NULL, includes = NULL, pageSize = NULL, summaryType = NULL)
-client$searchParams(params, resourceType = NULL)
+client$read(location, summaryType = NULL, returnType = "parsed")
+client$search(resourceType, criteria = NULL, includes = NULL, pageSize = NULL, summaryType = NULL, returnType = "parsed")
+client$searchById(resourceType, id, includes = NULL, summaryType = NULL, returnType = "parsed")
+client$wholeSystemSearch(criteria = NULL, includes = NULL, pageSize = NULL, summaryType = NULL, returnType = "parsed")
+client$searchParams(params, resourceType = NULL, returnType = "parsed")
 client$continue(bundle)
 
 
@@ -47,6 +47,7 @@ print(client)
   \item{pageSize}{Asks server to limit the number of entries per page returned.}
   \item{query}{A searchParams object containing the search parameters.}
   \item{bundle}{The bundle as received from the last response.}
+  \item{returnType}{Specify the return type. This can be "parsed", "json" or "xml".}
 }
 }
 
@@ -109,19 +110,21 @@ app_name <- "TestApp"
 scopes <- c("patient/*.read")
 
 app <- httr::oauth_app(appname = app_name, client_id, client_secret)
-oauth_endpoint <- httr::oauth_endpoint(authorize = paste(client$authUrl, "?aud=", client$endpoint, sep=""), access = client$tokenUrl)
-
+oauth_endpoint <- httr::oauth_endpoint(
+                  authorize = paste(client$authUrl, "?aud=", client$endpoint, sep=""),
+                  access = client$tokenUrl)
+  
 token <- httr::oauth2.0_token(endpoint = oauth_endpoint, app = app, scope = scopes)
 
 # Set a token and read a patient resource
-client$setToken(token)
+client$setToken(token$credentials$access_token)
 
 client$read("Patient/example")
 
 # Token refresh
 token <- token$refresh()
 
-client$setToken(token)
+client$setToken(token$credentials$access_token)
 
 }
 

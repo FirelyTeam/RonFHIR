@@ -1,18 +1,18 @@
 Package: RonFHIR
 Type: Package
 Title: Read and Search Interface to the 'HL7 FHIR' REST API
-Version: 0.2.0
+Version: 0.3.0
 Authors@R: c(person("Sander", "Laverman", role = c("aut", "cre"), email = "sander@fire.ly"), person("Firely B.V.", role = c("aut", "cph")))
 Description: R on FHIR is an easy to use wrapper around the 'HL7 FHIR' REST API (STU 3). It provides tools to easily read and search resources on a FHIR server and brings the results into the R environment. R on FHIR is based on the FhirClient of the official 'HL7 FHIR .NET API', also made by Firely.
 License: BSD 3-clause License + file LICENSE
-Imports: R6, httr, jsonlite
+Imports: R6, httr, jsonlite, utils, stringr
 Suggests: testthat
 Encoding: UTF-8
 LazyData: true
 Depends: R (>= 3.1.0)
 NeedsCompilation: no
 RoxygenNote: 6.0.1
-Packaged: 2017-10-18 13:41:22 UTC; Sander
+Packaged: 2018-07-20 13:41:22 UTC; Sander
 Author: Sander Laverman [aut, cre],
   Firely B.V. [aut, cph]
 Maintainer: Sander Laverman <sander@fire.ly>
