@@ -103,7 +103,7 @@
 NULL
 
 #' @export
-fhirBulkClient <- R6Class("fhirBlukClient",
+fhirBulkClient <- R6Class("fhirBulkClient",
                       public = list(
                         # Initializing the fhirBulkClient
                         initialize = function(endpoint, tokenURL = NULL, token = NULL)
