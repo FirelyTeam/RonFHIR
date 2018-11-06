@@ -190,7 +190,7 @@ execGetBulkStatus <- function(self){
   headers <- requestHeaders(self, "ndjson")
     
   self$queue["progress"] <- lapply(self$queue["statusUrl"], function(x){
-  response <- getRequest(x, headers)
+  response <- getRequest(self, x, headers)
   if(status_code(response) == 200){
     "100%"
   }
@@ -236,10 +236,10 @@ execDeleteBulkRequest <- function(self, requestNumber){
 addToQueue <- function(self, url){
   headers <- requestHeaders(self, "ndjson")
 
-  response <- getRequest(url, headers)
+  response <- getRequest(self, url, headers)
   response_headers <- headers(response)
   
-  progress_response <- getRequest(response_headers$`content-location`, headers)
+  progress_response <- getRequest(self, response_headers$`content-location`, headers)
   progress_headers  <- headers(progress_response)
   
   self$queue[nrow(self$queue) + 1,] = list(url, response_headers$`content-location`, progress_headers$`x-progress`)

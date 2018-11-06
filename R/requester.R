@@ -1,4 +1,7 @@
-getRequest <- function(url, headers){
+getRequest <- function(self, url, headers){
+  if(!startsWith(url, self$endpoint)){ # quick fix for relative paths, need to look for permanent solution
+    url <- paste(substr(self$endpoint, 1, nchar(self$endpoint)-1), url, sep = "")
+  }
   response <- tryCatch(GET(URLencode(url), 
                            add_headers(headers)),
                        error = function(e){stop("Could not connect to endpoint")})
@@ -28,7 +31,7 @@ requestHeaders <- function(self, returnType){
 
 getResource <- function(self, url, returnType){
   headers <- requestHeaders(self, returnType)
-  response <- getRequest(url, headers)
+  response <- getRequest(self, url, headers)
   payload <- content(response, as = "text", encoding = "UTF-8")
   
   if(returnType %in% c("json", "xml")){
@@ -46,7 +49,7 @@ getBulk <- function(self, url, returnType){
   headers <- requestHeaders(self, returnType)
   
   result <- lapply(downloadOverview$output$url, function(x){
-    response <- getRequest(x, headers)
+    response <- getRequest(self, x, headers)
     content <- content(response, as = "text", encoding = "UTF-8")
     if(returnType == "ndjson"){
       content
