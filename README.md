@@ -19,8 +19,10 @@ devtools::install_github("FirelyTeam/RonFHIR")
  - Paging mechanism
  - Fluent search calls
  - OAuth 2.0
+ - Bulk Data
 
 ## Usage
+### fhirClient
 ```r
 library(RonFHIR)
 # Setting up a fhirClient
@@ -66,4 +68,43 @@ client$qraphQL("{PatientList(name:\"pet\"){name @first @flatten{family,given @fi
 
 # Operations
 client$operation("Observation", name = "lastn")
+```
+### fhirBulkClient
+```r
+privatekey <- openssl::read_key("PrivateKey.pem")
+
+# Create your claim
+claim <- jose::jwt_claim(iss = "ServiceURL",
+                         sub = "ClientID",
+                         aud = "TokenURL",
+			 # expiration date as epoch (5 minutes)
+                         exp = as.integer(as.POSIXct( Sys.time() + 300)), 
+   			 # 'random' number
+                         jti = charToRaw(as.character(runif(1, 0.5, 100000000000)))) 
+
+# Sign your claim with your private key
+jwt <- jose::jwt_encode_sig(claim, privatekey)
+
+# Define your scope(s)
+scopes <- c("system/*.read", "system/CommunicationRequest.write")
+
+# Create a new fhirBulkClient
+bulkclient <- fhirBulkClient$new("FHIRBulkServerURL", tokenURL = "TokenURL")
+
+# Retrieve your token
+token <- bulkclient$retrieveToken(jwt, scopes)
+
+# Set your token
+bulkclient$setToken(token$access_token)
+
+# Request a download for Patient Cohort 3
+bulkclient$groupExport(3)
+
+# Request the progress of the requests
+bulkclient$getBulkStatus()
+
+# When the downloads a available, download the bulkdata
+patient_cohort_3 <- bulkclient$downloadBulk(1)
+
+View(patient_cohort_3)
 ```
