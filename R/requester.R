@@ -1,7 +1,4 @@
 getRequest <- function(self, url, headers){
-  if(!startsWith(url, self$endpoint)){ # quick fix for relative paths, need to look for permanent solution
-    url <- paste(substr(self$endpoint, 1, nchar(self$endpoint)-1), url, sep = "")
-  }
   response <- tryCatch(GET(URLencode(url), 
                            add_headers(headers)),
                        error = function(e){stop("Could not connect to endpoint")})

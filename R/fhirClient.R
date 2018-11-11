@@ -291,6 +291,9 @@ execContinue <- function(self, bundle)
   }
   else
   {
+    if(!startsWith(next_url, self$endpoint)){
+      next_url <- paste(substr(self$endpoint, 1, nchar(self$endpoint)-1), next_url, sep = "")
+    } 
     getResource(self, next_url, returnType)
   }
 }
