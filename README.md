@@ -29,7 +29,7 @@ library(RonFHIR)
 client <- fhirClient$new("https://vonk.fire.ly/")
 
 # Setting up a fhirClient with OAuth 2.0
-client <- fhirClient$new("https://vonk.fire.ly")
+client <- fhirClient$new("Endpoint of FHIR server that supports SMART on FHIR OAuth2 access")
 
 client_id <- "id"
 client_secret <- "secret"
