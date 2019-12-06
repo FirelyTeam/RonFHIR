@@ -1,0 +1,307 @@
+---
+title: "R on FHIR"
+author: "Alexander V. Alekseyenko (alexander.alekseyenko@gmail.com)"
+date: "`r date()`"
+output: 
+  html_document: 
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+    toc_float: true
+---
+
+
+# Preliminaries
+This session was solicited by Doug Fridsma.
+
+Taught by Grahame Grieve.
+
+The workshop uses POSTMan (https://www.getpostman.com/downloads/)
+
+The actual R exercises have been preceded with examples of querying mimic data using FHIR.
+
+See hapifhir.io for a Hapi server.
+
+Load all the libraries.
+```{r}
+library(httpuv); packageVersion("httpuv")
+library(devtools); packageVersion("devtools")
+# install_github("FirelyTeam/RonFHIR")
+library(RonFHIR); packageVersion("RonFHIR")
+library(stringr); packageVersion("stringr")
+library(ggplot2); packageVersion("ggplot2")
+```
+
+
+Open client connection
+```{r}
+client <- fhirClient$new("http://mimic.fhir.org/r3")
+```
+
+
+Simple search
+```{r}
+bundle <- client$search("Patient", c("gender=female", "birthdate=gt2082-06-27"))
+```
+
+What did we get back?
+```{r}
+class(bundle)
+names(bundle)
+summary(bundle)
+# Don't do this; you'll flood your screen
+#str(bundle)
+```
+
+Summary of the number of records and matches
+
+```{r}
+paste("Number of matching patients =", bundle$total)
+paste("Number of records =", dim(bundle$entry)[1])
+```
+
+Print the records gender and date of birth (my solution)
+```{r}
+paste(bundle$entry$resource$gender, 
+      bundle$entry$resource$birthDate,
+      unlist(lapply(bundle$entry$resource$extension, "[", 1, 2)),
+      sep=",")
+```
+
+Logic behind my solution:
+```{r}
+class(bundle$entry)
+names(bundle$entry)
+
+class(bundle$entry$resource)
+names(bundle$entry$resource)
+
+class(bundle$entry$resource$gender)
+class(bundle$entry$resource$birthDate)
+```
+
+We'll need a function to extract religion.
+```{r}
+getReligion <- function(extl) {
+  for (io in extl) {
+      for (i in 1:nrow(io)) {
+        if (io[i, "url"] == "http://hl7.org/fhir/StructureDefinition/patient-religion") {
+          v <- io[i, "valueCodeableConcept"];
+          return (v$text);
+        }
+      }
+  }
+  return ("??")
+}
+```
+
+
+
+Print the records gender and date of birth (Grahame's solution)
+```{r}
+for(row in 1:nrow(bundle$entry)) {
+  res <-bundle$entry[row, "resource"]
+  print(paste(res$gender, res$birthDate, 
+              getReligion(res$extension),  sep = ","))
+}
+```
+
+# Example iterating through pages of results
+
+Specify a search with 30 records per page
+```{r}
+bundle <- client$search("Patient", c("_count=30"))
+```
+
+
+```{r}
+class(bundle)
+names(bundle)
+class(client)
+names(client)
+```
+
+
+```{r}
+class(client$continue)
+```
+
+
+```{r}
+while(!is.null(bundle)) {
+  print(c("================================= Number of records=", 
+          dim(bundle$entry)[1]))
+  print(
+    paste(bundle$entry$resource$gender,
+          bundle$entry$resource$birthDate,
+          unlist(lapply(bundle$entry$resource$extension, "[", 1, 2)),
+          sep=","))
+  
+  # Go to the next page of the bundle using FHIRs paging mechanism
+  bundle <- client$continue(bundle)
+}
+```
+
+
+# using graphQL example 1
+What are we doing here?
+```{r}
+res <- client$qraphQL('{PatientList(){
+                      gender birthDate religion: 
+                      extension(url :
+                  "http://hl7.org/fhir/StructureDefinition/patient-religion") 
+                  {value : valueCodeableConcept { text } } }}');
+pl <- res$data$PatientList
+```
+
+
+```{r}
+pl
+```
+
+Note that religion did not print. See the magic below to make it work.
+
+# using graphQL Example 2
+```{r}
+res <- client$qraphQL('{PatientList(){
+                      gender birthDate religion: 
+                      extension(url : 
+                  "http://hl7.org/fhir/StructureDefinition/patient-religion") 
+                  @flatten {value : valueCodeableConcept 
+                  @flatten { religion: text } } }}');
+pl <- res$data$PatientList
+```
+
+
+easy now...
+```{r}
+pl
+```
+
+
+# Using OAuth
+
+Need lots of information from the server:
+* App-Name: (“Mimic” for Mimic Server)
+* Client-Id:  (c.5 for Mimic server)
+* Client-Secret: (cfe2cc3e-d4ca-49f4-8366-10064f4eda5c for Mimic server)
+* Auth-Endpoint: https://mimic.fhir.org/r3/auth/auth
+* Token-Endpoint:  https://mimic.fhir.org/r3/auth/token
+* Username / Password: gg / Mimic
+
+```{r eval=FALSE}
+client <- fhirClient$new("https://mimic.fhir.org/r3");
+app <- httr::oauth_app(appname = "Mimic", 
+                       "c.5", 
+                       "cfe2cc3e-d4ca-49f4-8366-10064f4eda5c")
+scopes <- c("patient/*.read")
+oauth_endpoint <- 
+  httr::oauth_endpoint(authorize = 
+                         paste("https://mimic.fhir.org/r3/auth/auth", 
+                               "?aud=", "https://mimic.fhir.org/r3", 
+                               "&state=", runif(1), sep=""), 
+                       access = "https://mimic.fhir.org/r3/auth/token")
+token <- httr::oauth2.0_token(endpoint = oauth_endpoint, 
+                              app = app, scope = scopes)
+
+client$setToken(token$credentials$access_token)
+```
+
+
+
+# O2 Saturation example
+Here we will build historic $O_2$ saturation dataset for a patient.
+
+## Utility functions
+We'll need a couple of functions to do date format conversion.
+```{r}
+fixDateTime <- function (s) {
+  if(nchar(s) == 10) {
+    return (paste(s, "00:00:00"));
+  } else {
+    return (str_replace(s,"T", " "));
+  }
+}
+
+fixDateTime2 <- function (s) {
+  ifelse(nchar(s) == 10, paste(s, "00:00:00"), sub("T", " ", s))
+}
+```
+
+
+```{r}
+client <- fhirClient$new("http://mimic.fhir.org/r3")
+
+bundle <- client$search("Observation", 
+                        c("code=2708-6", 
+                          "subject=Patient/30831", 
+                          "date=lt2130-08-01"))
+```
+
+```{r}
+dateList <- list();
+valueList <- list();
+index <- 1
+
+while(!is.null(bundle)) {
+  for(row in 1:nrow(bundle$entry)) {
+    res <-bundle$entry[row, "resource"]
+    dateList[index] = fixDateTime(res$effectiveDateTime);
+    valueList[index] = res$valueQuantity$value;
+    index = index+1;
+  }
+  bundle <- client$continue(bundle)
+}
+
+df <- do.call(rbind, 
+              Map(data.frame, 
+                  DATE=dateList, 
+                  SAT=valueList))
+df
+df$DATET <- as.POSIXct(df$DATE,tz=Sys.timezone())
+df
+```
+
+Now let's actually plot this
+```{r}
+ggplot(data = df, aes(x = DATET, y = SAT)) +
+  geom_point() + geom_line() +
+  labs(x = "Date",
+       y = "O2 Sat",
+       title = "Oxygen Saturation")+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+```
+
+
+## The same using graphQL
+```{r}
+res <- client$qraphQL('{ObservationList(code: "2708-6",
+                      subject: "Patient/30831", 
+                      date: "lt2130-08-01") 
+                      {date : effectiveDateTime 
+                      valueQuantity @flatten { value } }}');
+df <- res$data$ObservationList
+df$DATET <- as.POSIXct(fixDateTime2(df$date), 
+                       tz=Sys.timezone())
+df
+```
+
+
+Plotting
+```{r}
+ggplot(data = df, aes(x = DATET, y = value)) +
+  geom_point() + geom_line() +
+  labs(x = "Date",
+       y = "O2 Sat",
+       title = "Oxygen Saturation")+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+```
+
+
+# More on graphQL
+see [https://graphql.org]
+
+
