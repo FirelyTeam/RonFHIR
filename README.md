@@ -1,5 +1,5 @@
 # RonFHIR
-R on FHIR is an easy to use wrapper around the 'HL7 FHIR' REST API (STU 3). It provides tools to easily read and search resources on a FHIR server and bring the results into the R environment. R on FHIR is based on the FhirClient of the official '[HL7 FHIR .NET API](https://github.com/ewoutkramer/fhir-net-api)', also made by [Firely](https://fire.ly/).
+R on FHIR is an easy to use wrapper around the 'HL7 FHIR' REST API (STU 3 and R4). It provides tools to easily read and search resources on a FHIR server and bring the results into the R environment. R on FHIR is based on the FhirClient of the official '[HL7 FHIR .NET API](https://github.com/ewoutkramer/fhir-net-api)', also made by [Firely](https://fire.ly/).
 
 ## Installation
 ```r
