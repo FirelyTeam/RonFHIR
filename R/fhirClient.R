@@ -1,6 +1,6 @@
 #' fhirClient
 #'
-#' Read and search only client in R for FHIR STU 3.
+#' Read and search only client in R for FHIR STU 3 and R4.
 #' Based on \href{https://github.com/ewoutkramer/fhir-net-api}{the official HL7 FHIR .NET API.}
 #'
 #' @section Usage:
@@ -198,8 +198,8 @@ execInitialize <- function(self, endpoint, token) {
   tryCatch(payload$resourceType == "CapabilityStatement", error = function(e){stop("Could not connect to endpoint", call. = FALSE)})
 
   fhirVersion <- substr(payload$fhirVersion, 1, 1)
-  if(fhirVersion != "3"){
-    stop(paste("R on FHIR is not compatible with", fhirVersion, "only with STU 3"), call. = FALSE)
+  if(!(fhirVersion %in% c("3", "4"))){
+    stop(paste("R on FHIR is not compatible with", fhirVersion, "only with STU 3 and R4"), call. = FALSE)
   }
   
   if("security" %in% names(payload$rest)){

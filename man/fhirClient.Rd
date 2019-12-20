@@ -4,7 +4,7 @@
 \alias{fhirClient}
 \title{fhirClient}
 \description{
-Read and search only client in R for FHIR STU 3.
+Read and search only client in R for FHIR STU 3 and R4.
 Based on \href{https://github.com/ewoutkramer/fhir-net-api}{the official HL7 FHIR .NET API.}
 }
 \section{Usage}{

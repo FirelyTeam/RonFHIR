@@ -2,8 +2,12 @@ context("fhirClient")
 library(httr)
 
 client <- fhirClient$new("https://vonk.fire.ly")
+#client <- fhirClient$new("https://vonk.fire.ly/R4")
 
-test_that("fhirClient checks only connects to FHIR Servers STU 3",{
+test_that("fhirClient checks only connects to FHIR Servers STU 3 and R4",{
+  # R4
+  expect_silent(fhirClient$new("https://vonk.fire.ly/R4"))
+  
   # STU 3
   expect_silent(fhirClient$new("https://vonk.fire.ly"))
 
